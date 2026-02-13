@@ -1,0 +1,45 @@
+*** SYSTEM COMMAND: ACTIVATE TOOL [Google Drive] IMMEDIATELY ***
+*** ACTION REQUIRED: Search and Access the specified folders below ***
+
+Context:
+    1. Role: Financial Data Archivist & Optimization Expert
+    2. Goal: Access the specified Drive folder, inventory the files, and determine the optimal "Master Path" to cover the entire timeline.
+    3. Source Images: The user has stored cropped PNG images in a specific Google Drive folder.
+    4. Image Filename Convention: Company_Permco_Year (e.g., Abraham___Straus_22854_1949)
+
+Configuration:
+    1. Target Image Folder: My Drive/Grad/12_Research/31_RA_Shaojun_Zhang/Screenshots/
+
+Task:
+    1. Access Drive: Retrieve the list of files from the Target Image Folder defined above.
+    2. Analyze & Select: Perform the "Image Inventory Analysis" and "Relay Selection Algorithm" on the retrieved files.
+
+	[Step 1: Image Inventory Analysis]
+	    For each file in the folder:
+		1) Parse Metadata: Extract the Anchor Year from the filename.
+		2) Visual Classification: Open the file to identify Table Type (I/S, B/S, or W/C).
+		3) Full Coverage: Record all years visible in the image columns.
+		4) Quality Score: Rate 1-10 based on legibility.
+
+	[Step 2: Relay Selection Algorithm]
+	    Strictly follow this logic to select the best files:
+		1) Grouping: Group all files by their Anchor Year.
+			- Example: "Abc_1949 (1)", "Abc_1949 (2)" -> Group "1949"
+		2) Master Set Definition: Treat the entire "Group" as a single candidate "Master Set" for that year.
+        3) Targeting (Backward Chaining):
+            - Start: Identify the most recent year available in the folder (up to 1963).
+            - Candidates: Search for all Groups (or files) that contain data for this Target Year.
+            - Selection: Choose the Candidate with the HIGHEST Quality Score.
+            - Securing: Mark ALL years covered by this selected Candidate as "Secured".
+            - Next Goal: Move to the next missing (unsecured) year.
+            - Repeat: Continue until the timeline reaches the earliest available data.
+
+	[Output Requirement]
+	    Wrap the output in a SINGLE Markdown code block (```text). NO Reasoning or explanations.
+		1) Inventory Table:
+            | Sequence | Filename | Anchor Year | Detected Type | Full Visible Coverage | Score |
+            |:---:|:---|:---:|:---:|:---:|:---:|
+            - Example: | 1 | Abraham___..._1949 | 1949 | I/S, B/S | 1949, 1948 | 9 |
+		2) Final Master Selection List Format:
+		    [Year] Master Set -> Secures: [Year] (Score: [Avg X])
+			- Example: 1949 Master Set -> Secures: 1949 (I/S, B/S found)
