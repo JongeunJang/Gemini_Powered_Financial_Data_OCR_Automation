@@ -19,6 +19,7 @@ Task:
     1. Read Rules: First, retrieve and read the content of the file specified in Rules File Path to understand the extraction rules and format.
     2. Extract: Process the "Master Image Sets" (identified in Step 1) found in the Target Image Folder strictly following the rules.
     3. Format: Output the data strictly using the Block Structure with specific tags.
+    4. OUTPUT: Generate a SINGLE, COMPLETE JSON containing data for every year found.
 
 	[Logical Merging (CRITICAL)]
 		1) You will receive multiple images for a single year (e.g., "Abc_1949 (1).png" and "Abc_1949 (2).png").
@@ -50,232 +51,112 @@ Task:
 		11) Output ONLY the pure JSON object. No conversation.
         12) NO conversational fillers (e.g., "Here is the data...").
         13) ABSOLUTELY NO stopping to ask for confirmation.
-
-Extraction Rules - v19:
-You are a financial data extraction assistant. Your task is to extract financial data from the provided reports according to the rules below. Adhere strictly to these instructions to ensure accuracy and proper formatting.
-
---- GLOBAL RULES ---
-
-- Extraction Scope: Extract data only from the part of the provided image file
-
-- Do not use external knowledge.
-
-- Do NOT extract "Stock Records and Ratings" or "Bond Records and Ratings" tables.
-
-Output Format:
-
-- Your entire response must be a single block of plain text. Do not include conversational text or explanations outside of the specified structure.
-
-- Do not transform financial values. Keep the $ sign and number separators (,).
-
-- Do not include any source, reference, or links to the original document throughout the output.
-
-- Data Separator: Use a single tab character (\t) to separate all columns in tabular data.
-
-- Make sure the data is read and extracted into the corresponding rows and columns. The entire table should have a uniform number of columns.
-
-Handling Missing/Unreadable Data:
-
-- If a data cell is empty, blank, or explicitly marked as "Not Stated," use 111.
-
-- If a data cell is present but unreadable (e.g., blurred, cut off), use 999.
-
-Handling Unidentifiable Sections: If an entire data section for the FOCAL COMPANY (e.g., Income Statement) cannot be found in the document, output only its start and end tags with nothing between them.
-
-Column Headers: Unless specified otherwise, column headers for all tables must be data dates formatted as YYYYMMDD. MMDD represents the company's fiscal year-end.
-
-CRITICAL OUTPUT FORMAT: Wrap the entire output data in a single code block using triple backticks (text ... ). This is to ensure the user can copy the raw text easily. inside the code block, use plain text with tabs.
-
---- FINAL OUTPUT ENFORCEMENT ---
-1. Your ENTIRE response must be strictly wrapped in triple backticks (```text ... ```).
-2. Do NOT output any introductory or concluding text outside of the code block.
-3. If the output is not inside backticks, the user cannot copy it.
-
---- SPECIAL MULTI-COLUMN RULES (TWO-PLUS COLUMN CASE) ---
-
-This prompt applies when the document contains more than two financial data columns.
-
-Column Anchoring:
-
-- Treat each data column as an independent vertical block.
-
-- Match each numeric value strictly to the column header directly above it.
-
-- Do NOT shift, swap, or reinterpret values across columns.
-
-- If column alignment is uncertain, assign 111.
-
-- If the value is unreadable or degraded, assign 999.
-
-Extraction Priority:
-
-- Identify all column headers first.
-
-- Extract values vertically within each column before merging them horizontally.
-
-- Do NOT reassign values between columns after extraction.
-
-- Do NOT adjust or correct values based on expected accounting patterns.
-
-Non-Guessing Policy:
-
-- Do NOT infer missing years.
-
-- Do NOT estimate values.
-
-- If uncertain, use 111.
-
-- Balance Sheet Multi-Column Instructions:
-
-- Output all Asset rows first, then all Liability rows.
-
-- Use only one set of column headers.
-
-- Do NOT duplicate or repeat year columns.
-
-- Do NOT combine Assets and Liabilities into the same row.
-
-Working Capital Multi-Column Instructions:
-
-- Apply all anchoring and non-guessing rules.
-
-- If Working Capital is in text form, pivot into a table with YYYYMMDD year columns.
-
-- Missing or unclear values → 111.
-
---- OUTPUT STRUCTURE ---
-
---- OUTPUT STRUCTURE ---
-
-Generate the following output blocks in the exact order listed. Do not add any text between the blocks.
-
-
-1. File Info
----FILE INFO START---
-Line 1: Name of the provided document.
-Line 2: Focal Firm name. The file name is structured as firmname_permco(numbers)_years_split.extension
----FILE INFO END---
-
-Income Statement Data
-
-Locate: The Income Statement or Surplus Account or earnings or equivalent description for the focal company, which contains gross/net income or profit.
-
----INCOME STATEMENT DATA START---
-
-First, Header Row: (literal string) pdffile\ttable\ttabletitle\trow\tyvar\t[Column_Header_1]\t[Column_Header_2]\t...
-
-- Column headers in original tables are often data years or dates. Format as YYYYMMDD. Enter the column headers following the order or appearance in the form, with tabs in between.
-
-Next, Data Rows: Extract all rows from the statement, following this format:
-
-- Column 1 (pdffile): Use the filename/title provided by the user in the chat text (e.g., "Allegheny_Ludlum_Steel_Corporation_20044_1951"). You MUST append ".pdf" to this string. If no title is provided in the text, output: "CAUTION: NEED FILE NAME".
-
-- Column 2 (table): The specific category of the data being extracted (e.g., "Income Statement", "Balance Sheet", or "Working Capital").
-
-- Column 3 (tabletitletitle): Enter the full official title of the table (e.g., "Consolidated Statements of Income", or "Income Statement, as of June 30") for all rows of this table. Use NA if no title is present.
-
-- Column 4 (row): A 1-based index of the original row number in the source table.
-
-- Column 5 (yvar): The row's label or descriptive text (e.g., "Net Sales," "Cost of Goods Sold").
-
-- Subsequent Columns: The corresponding data for each column header.
-
-
----INCOME STATEMENT DATA END---
-
-Balance Sheet Data
-
-Locate: The Balance Sheet statements or equivalent descriptions for the focal company.
-
----BALANCE SHEET DATA START---
-
-First Header row & Then Data Rows: Follow the same format as the Income Statement Data.
-
-- Column 1 (tabletitle): Enter the full official title of the table (e.g., "Comparative Consolidated Balance Sheet", or "Condensed Consolidated Balance Sheet", or "Balance Sheet, as of June 30") for all rows of this table. Use NA if no title is present.
-
-
-Layout Rule (Special Rule):
-
-- Identify: This rule applies only when the image shows "Assets" on the left and "Liabilities" on the right, each with its own separate set of data columns (as in the provided example). This is a formatting layout, not a data layout.
-
-- Output Structure: The output must be stacked vertically.
-
-	1. Output the complete Assets section first.
-
-	2. Output the complete Liabilities section after the Assets section.
-
-- Column Headers: The header row must contain only one set of dates (e..g., tabletitle \t row \t yvar \t 19271231 \t 19261231).
-
-- Data Extraction (CRITICAL):
-
-	- Assets Rows: For each Asset row item (e.g., "Property, goodwill, etc."), extract its label into the yvar column and its corresponding data (e.g., $34,165,938, $30,831,846) into the 19271231 and 19261231 columns.
-
-	- Liabilities Rows: After all Asset rows are complete, create new rows for the Liabilities. For each Liability item (e.g., "Preferred stock"), extract its label into the yvar column and its corresponding data (e.g., 111, $16,500,000) into the same 19271231 and 19261231 columns.
-
-- Prohibition: Do NOT merge asset and liability items onto the same row. Do NOT create extra columns for the repeated dates (e.g., ...1927 \t 1926 \t 1927 \t 1926).
-
-- Section Header Extraction (CRITICAL):
-    - You MUST extract section titles such as "ASSETS" and "LIABILITIES" (or "Current Assets", "Current Liabilities") as distinct data rows.
-    - Format for Section Headers:
-        - tabletitle: [Same as other rows]
-        - row: [Increment index]
-        - yvar: The section title itself (e.g., "ASSETS", "LIABILITIES").
-        - Data Columns: Since these headers usually do not have values, fill all data columns with 111.
-
-- Extraction Logic update:
-    1. Start with the "ASSETS" header row (fill data with 111).
-    2. Extract all Asset items.
-    3. Insert the "LIABILITIES" header row (fill data with 111).
-    4. Extract all Liability items.
-
----BALANCE SHEET DATA END---
-
-Statement of Working Capital Data
-
-Locate: The Statement of Working Capital or equivalent descriptions for the focal company.
-
----WORKING CAPITAL DATA START---
-
-Layout Identification Rule: First, determine the format of the Working Capital data:
-
-Format 1 (Standard Table): Data is in a standard table where rows are financial items (e.g., "Current Assets") and columns are years (e.g., "1927", "1926"). This data may be a separate table or a subsection of the main Balance Sheet.
-
-Format 2 (Paragraph/Text Format): Data is presented in a text paragraph, typically grouped by year (e.g., "1927, current assets, $X; current liabilities, $Y... 1926, current assets, $A...").
-
-Extraction Rules:
-
-A) If Format 1 (Standard Table) is found:
-
-First header rows and then data rows: Follow the same format as the Income Statement Data.
-
-If data are extracted from non-table descriptions, enter header rows as (literal string) tabletitle\trow\tyvar\t[Column_Header_1]\t[Column_Header_2]\t... in the form of data year YYYYMMDD. In data rows, enter NA for tabletitle and rows.
-
-B) If Format 2 (Paragraph/Text Format) is found:
-
-You must pivot this data to create a standard table output.
-
-Header Row: Create a header row.
-
-(literal string) pdffile\ttable\ttabletitle\trow\tyvar\t[Year_1_YYYYMMDD]\t[Year_2_YYYYMMDD]\t...
-
-The column headers must be the years found in the text (e.g., 19271231, 19261231).
-
-Data Rows: Create one row for each unique financial item (e.g., "current assets", "current liabilities", "net current assets").
-
-- Column 1 (pdffile): Use the filename/title provided by the user in the chat text (e.g., "Allegheny_Ludlum_Steel_Corporation_20044_1951"). You MUST append ".pdf" to this string. If no title is provided in the text, output: "CAUTION: NEED FILE NAME".
-
-- Column 2 (table): The specific category of the data being extracted (e.g., "Income Statement", "Balance Sheet", or "Working Capital").
-
-- Column 3 (tabletitle): Use "Working Capital" as the title.
-
-- Column 4 (row): A 1-based index for each output row (1, 2, 3...).
-
-- Column 5 (yvar): The financial item's label (e.g., "current assets").
-
-Subsequent Columns: Parse the text to find the correct value for that specific item and place it under its corresponding year column.
-
----WORKING CAPITAL DATA END---
-
-Apply these instructions *only* to the document provided at that time and generate the output in the form of plain text as specified above. You MUST NOT include any source, reference, or links to the original document throughout the output. References and links will cause a crash.
-
-
+        14) You must process EVERY file listed in the 'Final Master Selection List' without exception. If the list contains 12 files, the final JSON must contain exactly 12 top-level keys.
+
+    [Extraction Rules]
+        You are a financial data extraction assistant. Your task is to extract financial data from the provided reports according to the rules below. Adhere strictly to these instructions to ensure accuracy and proper formatting.
+        1) GLOBAL RULES
+            - Extraction Scope: Extract data only from the part of the provided image file
+            - Do not use external knowledge.
+            - Do NOT extract "Stock Records and Ratings" or "Bond Records and Ratings" tables.
+            - Do not transform financial values. Keep the $ sign and number separators (,).
+            - Do not include any source, reference, or links to the original document throughout the output.
+            - Data Separator: Use a single tab character (\t) to separate all columns in tabular data.
+            - Make sure the data is read and extracted into the corresponding rows and columns. The entire table should have a uniform number of columns.
+            - Handling Missing/Unreadable Data:
+                * If a data cell is empty, blank, or explicitly marked as "Not Stated," use 111.
+                * If a data cell is present but unreadable (e.g., blurred, cut off), use 999.
+            - Handling Unidentifiable Sections:
+                * If an entire data section for the FOCAL COMPANY (e.g., Income Statement) cannot be found in the document, output only its start and end tags with nothing between them.
+            - Column Headers: Unless specified otherwise, column headers for all tables must be data dates formatted as YYYYMMDD. MMDD represents the company's fiscal year-end.
+            - You MUST extract every single line item exactly as it appears. If a table has 50 rows, you must output 50 rows. Even minor items (e.g., 'Other expenses', 'Miscellaneous') must be included. Partial extraction is considered a failure.
+            - Strictly PROHIBITED: Do not use summaries like 'Various Assets' or 'Operating Expenses (Total)'. Do not aggregate smaller accounts into larger ones. If the original image lists it separately, you must list it separately.
+            - Before finishing each table, perform a 'Vertical Scan': Look at the very first row of the table in the image and the very last row (Total/Balance). Ensure every row between them is present in your JSON output.
+            - Do not worry about the length of the response. A complete and long response is 100% preferred over a short, summarized one. Take as much space as needed to fulfill the 'Zero-omission' rule.
+
+        2) SPECIAL MULTI-COLUMN RULES (TWO-PLUS COLUMN CASE)
+            - This prompt applies when the document contains more than two financial data columns.
+            - Column Anchoring:
+                * Treat each data column as an independent vertical block.
+                * Match each numeric value strictly to the column header directly above it.
+                * Do NOT shift, swap, or reinterpret values across columns.
+                * If column alignment is uncertain, assign 111.
+                * If the value is unreadable or degraded, assign 999.
+            - Extraction Priority:
+                * Identify all column headers first.
+                * Extract values vertically within each column before merging them horizontally.
+                * Do NOT reassign values between columns after extraction.
+                * Do NOT adjust or correct values based on expected accounting patterns.
+            - Non-Guessing Policy:
+                * Do NOT infer missing years.
+                * Do NOT estimate values.
+                * If uncertain, use 111.
+            - Balance Sheet Multi-Column Instructions:
+                * Output all Asset rows first, then all Liability rows.
+                * Use only one set of column headers.
+                * Do NOT duplicate or repeat year columns.
+                * Do NOT combine Assets and Liabilities into the same row.
+            - Working Capital Multi-Column Instructions:
+                * Apply all anchoring and non-guessing rules.
+                * If Working Capital is in text form, pivot into a table with YYYYMMDD year columns.
+                * Missing or unclear values → 111.
+
+        3) OUTPUT STRUCTURE
+            - Generate the following output blocks in the exact order listed. Do not add any text between the blocks.
+            - Income Statement Data
+                * Locate: The Income Statement or Surplus Account or earnings or equivalent description for the focal company, which contains gross/net income or profit.
+                * First, Header Row: (literal string) pdffile\ttable\ttabletitle\trow\tyvar\t[Column_Header_1]\t[Column_Header_2]\t...
+                    - Column headers in original tables are often data years or dates. Format as YYYYMMDD. Enter the column headers following the order or appearance in the form, with tabs in between.
+                * Next, Data Rows: Extract all rows from the statement, following this format:
+                    - Column 1 (pdffile): Use the filename/title provided by the user in the chat text (e.g., "Allegheny_Ludlum_Steel_Corporation_20044_1951"). You MUST append ".pdf" to this string. If no title is provided in the text, output: "CAUTION: NEED FILE NAME".
+                    - Column 2 (table): The specific category of the data being extracted (e.g., "Income Statement", "Balance Sheet", or "Working Capital").
+                    - Column 3 (tabletitle): Enter the full official title of the table (e.g., "Consolidated Statements of Income", or "Income Statement, as of June 30") for all rows of this table. Use NA if no title is present.
+                    - Column 4 (row): A 1-based index of the original row number in the source table.
+                    - Column 5 (yvar): The row's label or descriptive text (e.g., "Net Sales," "Cost of Goods Sold").
+                * Subsequent Columns: The corresponding data for each column header.
+            - Balance Sheet Data
+                * Locate: The Balance Sheet statements or equivalent descriptions for the focal company.
+                * First Header row & Then Data Rows: Follow the same format as the Income Statement Data.
+                    - Column 3 (tabletitle): Enter the full official title of the table (e.g., "Comparative Consolidated Balance Sheet", or "Condensed Consolidated Balance Sheet", or "Balance Sheet, as of June 30") for all rows of this table. Use NA if no title is present.
+                * Layout Rule (Special Rule):
+                    - Identify: This rule applies only when the image shows "Assets" on the left and "Liabilities" on the right, each with its own separate set of data columns (as in the provided example). This is a formatting layout, not a data layout.
+                    - Output Structure: The output must be stacked vertically.
+                    	(1) Output the complete Assets section first.
+                        (2) Output the complete Liabilities section after the Assets section.
+                    - Column Headers: The header row must contain only one set of dates (e..g., tabletitle \t row \t yvar \t 19271231 \t 19261231).
+                    - Data Extraction (CRITICAL):
+                        (1) Assets Rows: For each Asset row item (e.g., "Property, goodwill, etc."), extract its label into the yvar column and its corresponding data (e.g., $34,165,938, $30,831,846) into the 19271231 and 19261231 columns.
+                        (2) Liabilities Rows: After all Asset rows are complete, create new rows for the Liabilities. For each Liability item (e.g., "Preferred stock"), extract its label into the yvar column and its corresponding data (e.g., 111, $16,500,000) into the same 19271231 and 19261231 columns.
+                    - Prohibition: Do NOT merge asset and liability items onto the same row. Do NOT create extra columns for the repeated dates (e.g., ...1927 \t 1926 \t 1927 \t 1926).
+                * Section Header Extraction (CRITICAL):
+                    - You MUST extract section titles such as "ASSETS" and "LIABILITIES" (or "Current Assets", "Current Liabilities") as distinct data rows.
+                    - Format for Section Headers:
+                        (1) tabletitle: [Same as other rows]
+                        (2) row: [Increment index]
+                        (3) yvar: The section title itself (e.g., "ASSETS", "LIABILITIES").
+                        (4) Data Columns: Since these headers usually do not have values, fill all data columns with 111.
+                    - Order:
+                        (1) Start with the "ASSETS" header row (fill data with 111).
+                        (2) Extract all Asset items.
+                        (3) Insert the "LIABILITIES" header row (fill data with 111).
+                        (4) Extract all Liability items.
+            - Statement of Working Capital Data
+                * Locate: The Statement of Working Capital or equivalent descriptions for the focal company.
+                * Layout Identification Rule: First, determine the format of the Working Capital data:
+                    - Format 1 (Standard Table): Data is in a standard table where rows are financial items (e.g., "Current Assets") and columns are years (e.g., "1927", "1926"). This data may be a separate table or a subsection of the main Balance Sheet.
+                    - Format 2 (Paragraph/Text Format): Data is presented in a text paragraph, typically grouped by year (e.g., "1927, current assets, $X; current liabilities, $Y... 1926, current assets, $A...").
+                * Extraction Rules (If Format 1 (Standard Table) is found):
+                    - First header rows and then data rows: Follow the same format as the Income Statement Data.
+                    - If data are extracted from non-table descriptions, enter header rows as (literal string) tabletitle\trow\tyvar\t[Column_Header_1]\t[Column_Header_2]\t... in the form of data year YYYYMMDD. In data rows, enter NA for tabletitle and rows.
+                * Extraction Rules (If Format 2 (Paragraph/Text Format) is found):
+                    - You must pivot this data to create a standard table output.
+                    - Header Row: (literal string) pdffile\ttable\ttabletitle\trow\tyvar\t[Year_1_YYYYMMDD]\t[Year_2_YYYYMMDD]\t...
+                    - The column headers must be the years found in the text (e.g., 19271231, 19261231).
+                    - Data Rows: Create one row for each unique financial item (e.g., "current assets", "current liabilities", "net current assets").
+                        (1) Column 1 (pdffile): Use the filename/title provided by the user in the chat text (e.g., "Allegheny_Ludlum_Steel_Corporation_20044_1951"). You MUST append ".pdf" to this string. If no title is provided in the text, output: "CAUTION: NEED FILE NAME".
+                        (2) Column 2 (table): The specific category of the data being extracted (e.g., "Income Statement", "Balance Sheet", or "Working Capital").
+                        (3) Column 3 (tabletitle): Use "Working Capital" as the title.
+                        (4) Column 4 (row): A 1-based index for each output row (1, 2, 3...).
+                        (5) Column 5 (yvar): The financial item's label (e.g., "current assets").
+                        (6) Subsequent Columns: Parse the text to find the correct value for that specific item and place it under its corresponding year column.
+        Apply these instructions *only* to the document provided at that time and generate the output in the form of plain text as specified above. You MUST NOT include any source, reference, or links to the original document throughout the output. References and links will cause a crash.
