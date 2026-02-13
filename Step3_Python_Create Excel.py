@@ -5,7 +5,7 @@ import os
 import re
 
 
-def generate_organized_excels_final(file_path, folder_name='output_excels'):
+def generate_organized_excels_smart(file_path, folder_name='output_excels'):
     # 1. 출력 폴더 생성
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
@@ -20,57 +20,75 @@ def generate_organized_excels_final(file_path, folder_name='output_excels'):
         with open(file_path, 'r', encoding='utf-8') as f:
             raw_content = f.read().strip()
 
-        # JSON 파싱 전처리 (마크다운 제거)
+        # JSON 파싱 전처리
         clean_content = raw_content.replace('```json', '').replace('```', '').strip()
 
-        # 콤마 누락 자동 보정 로직
+        # 콤마 보정 등 JSON 파싱 시도
         try:
             data = json.loads(clean_content)
         except json.JSONDecodeError:
-            print("⚠️ JSON 문법 보정 중...")
+            # 콤마 누락 자동 보정
             fixed_content = re.sub(r'(?<=[^\\]")\s+(?=")', ',\n', clean_content)
             try:
                 data = json.loads(fixed_content)
             except:
-                print("❌ JSON 파싱 실패. 텍스트 파일의 형식을 확인해주세요.")
-                return
+                # 최악의 경우: JSON 형식이 아니더라도 텍스트 덩어리로 처리 시도
+                data = {"merged_data": clean_content}
 
     except Exception as e:
         print(f"❌ 파일 읽기 에러: {e}")
         return
 
-    # 3. 데이터 처리 및 엑셀 생성
-    success_count = 0
-    for pdf_name, v19_text in data.items():
-        try:
-            # === 진짜 데이터 시작점(Header) 찾기 ===
-            lines = v19_text.strip().split('\n')
-            start_index = -1
+    # 3. 모든 데이터 하나로 합치기 (Master DataFrame 생성)
+    all_dfs = []
 
+    for key, text_data in data.items():
+        try:
+            # 헤더 찾기 로직
+            lines = str(text_data).strip().split('\n')
+            start_index = -1
             for i, line in enumerate(lines):
                 if 'pdffile' in line and '\t' in line:
                     start_index = i
                     break
 
-            if start_index == -1:
-                print(f"⚠️ '{pdf_name}' 건너뜀: 유효한 데이터 헤더(pdffile)를 찾을 수 없습니다.")
-                continue
+            if start_index != -1:
+                clean_text = '\n'.join(lines[start_index:])
+                df_chunk = pd.read_csv(io.StringIO(clean_text), sep='\t')
+                all_dfs.append(df_chunk)
+        except Exception as e:
+            print(f"⚠️ 데이터 병합 중 경고 ({key}): {e}")
 
-            # 진짜 데이터만 다시 합치기
-            clean_table_text = '\n'.join(lines[start_index:])
+    if not all_dfs:
+        print("❌ 처리할 데이터가 없습니다.")
+        return
 
-            # 데이터프레임 변환
-            df = pd.read_csv(io.StringIO(clean_table_text), sep='\t')
+    # 전체 데이터를 하나의 프레임으로 병합
+    master_df = pd.concat(all_dfs, ignore_index=True)
 
-            # .pdf 확장자 보정
-            if not pdf_name.lower().endswith('.pdf'):
-                pdf_name += ".pdf"
+    # 4. 'pdffile' 컬럼 기준으로 다시 쪼개서 엑셀 저장 (핵심 로직)
+    if 'pdffile' not in master_df.columns:
+        print("❌ 데이터에 'pdffile' 컬럼이 없어 분리할 수 없습니다.")
+        return
 
-            # 엑셀 저장 경로 설정
-            excel_filename = pdf_name.replace('.pdf', '') + ".xlsx"
+    unique_files = master_df['pdffile'].unique()
+    print(f"🔍 총 {len(unique_files)}개의 고유 파일을 발견했습니다. 분리 저장을 시작합니다...")
+
+    success_count = 0
+    for pdf_filename in unique_files:
+        try:
+            # 해당 파일의 데이터만 필터링
+            file_df = master_df[master_df['pdffile'] == pdf_filename]
+
+            # 파일명 정제 (.pdf 제거 등)
+            base_name = str(pdf_filename).replace('.pdf', '').replace('.png', '').strip()
+            # 파일명에 엑셀에서 못 쓰는 특수문자가 있다면 제거/변경
+            base_name = re.sub(r'[\\/*?:"<>|]', "_", base_name)
+
+            excel_filename = base_name + ".xlsx"
             excel_path = os.path.join(folder_name, excel_filename)
 
-            # 엑셀 저장 (시트 분리 로직)
+            # 엑셀 저장
             with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
                 categories = {
                     'Income Statement': 'Income Statement',
@@ -78,30 +96,26 @@ def generate_organized_excels_final(file_path, folder_name='output_excels'):
                     'Working Capital': 'Working Capital'
                 }
 
-                found_any = False
+                found_any_sheet = False
                 for cat_key, sheet_name in categories.items():
-                    # 대소문자 구분 없이 포함 여부 확인
-                    filtered_df = df[df['table'].str.contains(cat_key, case=False, na=False)]
-                    if not filtered_df.empty:
-                        filtered_df.to_excel(writer, sheet_name=sheet_name, index=False)
-                        found_any = True
+                    # 해당 카테고리 데이터 필터링
+                    sheet_df = file_df[file_df['table'].str.contains(cat_key, case=False, na=False)]
 
-                # [삭제됨] Etc 시트 생성 로직을 제거했습니다.
+                    if not sheet_df.empty:
+                        sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                        found_any_sheet = True
 
-            if found_any:
-                print(f"✅ 생성 완료: {excel_filename}")
-                success_count += 1
-            else:
-                # 3가지 카테고리에 해당하는 데이터가 하나도 없으면 파일은 생성되지만 빈 껍데기일 수 있음
-                # 혹은 openpyxl 특성상 기본 시트가 하나 생길 수 있음
-                print(f"⚠️ 경고: {excel_filename} (I/S, B/S, W/C 데이터가 발견되지 않음)")
-                # 필요시 여기서 os.remove(excel_path)를 호출하여 빈 파일 삭제 가능
+                if found_any_sheet:
+                    print(f"✅ 생성 완료: {excel_filename}")
+                    success_count += 1
+                else:
+                    print(f"⚠️ 데이터 부족으로 생성 건너뜀: {excel_filename}")
 
         except Exception as e:
-            print(f"❌ '{pdf_name}' 처리 중 오류: {e}")
+            print(f"❌ '{pdf_filename}' 저장 실패: {e}")
 
-    print(f"\n🎉 총 {success_count}개의 엑셀 파일이 생성되었습니다!")
+    print(f"\n🎉 총 {success_count}개의 엑셀 파일이 완벽하게 분리 생성되었습니다!")
 
 
 if __name__ == "__main__":
-    generate_organized_excels_final('gemini_output.txt')
+    generate_organized_excels_smart('output_gemini.txt')

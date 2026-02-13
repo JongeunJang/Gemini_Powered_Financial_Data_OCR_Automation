@@ -1,19 +1,9 @@
-*** SYSTEM COMMAND: ACTIVATE TOOL [Google Drive] IMMEDIATELY ***
-*** ACTION REQUIRED: Search for image files using the "Search Query" defined below ***
-
 Context:
     1. Role: Financial data extraction expert.
     2. Goal: Construct a complete, high-fidelity financial timeline by selecting the optimal "Master Image Sets" and extracting fully granular data (I/S, B/S, W/C) into the strict Block Structure JSON format.
     3. Prerequisite: Step 1 (Inventory & Selection) is COMPLETE. The "Final Master Selection List" has been generated in the previous turn.
-    4. Source: The specific images identified as "Master Sets" are stored in the user's Google Drive.
+    4. Source: The specific images identified as "Master Sets" from Step 1.
     5. Rules: The extraction logic is explicitly provided in the "Extraction Rules - v##" section at the bottom of this prompt.
-
-Configuration:
-    1. Target Files: The specific filenames listed in the "Final Master Selection List" from Step 1.
-
-Configuration:
-    1. Target Image Folder: My Drive/Grad/12_Research/31_RA_Shaojun_Zhang/Screenshots/
-    2. Rules File Path: My Drive/Grad/12_Research/31_RA_Shaojun_Zhang/Screenshots/Prompt/prompt_v19_multicolumns.txt
 
 Task:
     1. Read Rules: First, retrieve and read the content of the file specified in Rules File Path to understand the extraction rules and format.
@@ -26,6 +16,11 @@ Task:
 		2) You must TREAT them as pages of a SINGLE document.
 		3) Combine extracted data from ALL images belonging to the same year into a SINGLE JSON entry.
 
+    [JSON Segmentation (CRITICAL - Between Different Years)]
+        1) Do NOT combine data from different years into the same string.
+        2) Create a **UNIQUE JSON Key** for each Master Set (Year).
+        3) Example: "Abc_1949.pdf" and "Abc_1948.pdf" must be separate keys.
+
 	[Filename Masquerading (Unified Key)]
 		1) Determine the "Base Filename" by removing part suffixes (e.g., "Abc_1949 (1)" -> "Abc_1949").
 		2) Append ".pdf" to this Base Filename to create the unique JSON Key (e.g., "Abc_1949.pdf" (NOT "Abc_1949 (1).pdf").
@@ -34,8 +29,15 @@ Task:
 	[Output Format]
         ```json
         {
-          "Abraham___Straus_22854_1949.pdf": "pdffile\ttable\ttabletitle\trow\tyvar\t1949\t1948\nAbraham___Straus_22854_1949.pdf\tIncome Statement\tIncome Account\t1\tNet Sales\t$10,000\t$9,000\n[...Full I/S rows...]\n[...Full B/S rows...]"
+          "Abraham___Straus_22854_1949.pdf": "pdffile\ttable\ttabletitle\trow\tyvar\t19490131\t19480131\nAbraham___Straus_22854_1949.pdf\tIncome Statement\tIncome Account\t1\tNet Sales\t$10,000\t$9,000\n[...Full I/S rows...]\n[...Full B/S rows...]",
+          "Abraham___Straus_22854_1948.pdf": "pdffile\ttable\ttabletitle\trow\tyvar\t19480131\t19470131\nAbraham___Straus_22854_1948.pdf\tIncome Statement\tIncome Account\t1\tNet Sales\t$9,000\t$8,000\n[...Full I/S rows...]\n[...Full B/S rows...]"
         }
+
+    [Token Limit Guardrail]
+        1. If the data volume is high (e.g., more than 2-3 Master Sets or multi-page tables), do not attempt a full output to avoid truncation.
+        2. Prior to extraction, output this concise alert and wait for confirmation:
+           "⚠️ [Capacity Alert] Data exceeds single-response limits. To ensure JSON integrity and zero-omission, I will process this in batches. Start with [Year Range]?".
+        3. Proceed only after explicit user confirmation
 
 	[Constraint]
         1) Visually identify the table type (Income Statement, Balance Sheet, or Working Capital).
@@ -114,6 +116,7 @@ Task:
                     - Column 4 (row): A 1-based index of the original row number in the source table.
                     - Column 5 (yvar): The row's label or descriptive text (e.g., "Net Sales," "Cost of Goods Sold").
                 * Subsequent Columns: The corresponding data for each column header.
+                * Row Index Rule: The 'row' index MUST start at 1 for this section.
             - Balance Sheet Data
                 * Locate: The Balance Sheet statements or equivalent descriptions for the focal company.
                 * First Header row & Then Data Rows: Follow the same format as the Income Statement Data.
@@ -140,6 +143,7 @@ Task:
                         (2) Extract all Asset items.
                         (3) Insert the "LIABILITIES" header row (fill data with 111).
                         (4) Extract all Liability items.
+                * Row Index Rule: The 'row' index MUST reset and start at 1 for this section.
             - Statement of Working Capital Data
                 * Locate: The Statement of Working Capital or equivalent descriptions for the focal company.
                 * Layout Identification Rule: First, determine the format of the Working Capital data:
@@ -159,4 +163,5 @@ Task:
                         (4) Column 4 (row): A 1-based index for each output row (1, 2, 3...).
                         (5) Column 5 (yvar): The financial item's label (e.g., "current assets").
                         (6) Subsequent Columns: Parse the text to find the correct value for that specific item and place it under its corresponding year column.
+                * Row Index Rule: The 'row' index MUST reset and start at 1 for this section.
         Apply these instructions *only* to the document provided at that time and generate the output in the form of plain text as specified above. You MUST NOT include any source, reference, or links to the original document throughout the output. References and links will cause a crash.
