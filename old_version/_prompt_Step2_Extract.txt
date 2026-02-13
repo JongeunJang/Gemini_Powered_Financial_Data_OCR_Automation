@@ -1,0 +1,43 @@
+Role: Financial data extraction expert.
+
+Task: Extract ALL visible financial data (I/S, B/S, W/C) from the selected "Master Image Sets".
+
+Instructions (Strictly follow prompt_v19_multicolumns.txt):
+
+	[Logical Merging (CRITICAL)]
+		- You will receive multiple images for a single year (e.g., "Abc_1949 (1).png" and "Abc_1949 (2).png").
+		- You must TREAT them as pages of a SINGLE document.
+		- Combine extracted data from ALL images belonging to the same year into a SINGLE JSON entry.
+
+	[Filename Masquerading (Unified Key)]
+		- Determine the "Base Filename" by removing part suffixes (e.g., "Abc_1949 (1)" -> "Abc_1949").
+		- Append ".pdf" to this Base Filename to create the unique JSON Key (e.g., "Abc_1949.pdf" (NOT "Abc_1949_IS.pdf").
+		- Use this SAME Base Filename ending in ".pdf" for the first column ("pdffile") for ALL rows (e.g., "Abc_1949.pdf").
+
+	[Visual Identification]
+		- Visually identify the table type (Income Statement, Balance Sheet, or Working Capital).
+		- If an image contains multiple tables (e.g., I/S and B/S together), extract ALL of them into the single output string.
+
+	[Extraction Rules]
+		- Extract I/S, B/S, W/C from all provided images.
+		- Combine them into one long tab-separated string.
+		- Extract every single row visible in the image.
+		- Do not summarize, skip, or abbreviate any line items.
+		- Include the header row (`pdffile\ttable...`) ONLY ONCE at the very top.
+
+	[Format]
+		- Use the v19 tab-separated format (\t).
+		- Combine all extracted tables for one file into a single continuous string.
+		- The header row (pdffile\ttable\ttabletitle...) should appear only once at the very top.
+
+	[Output Format]
+```json
+{
+  "Abraham___Straus_22854_1949.pdf": "pdffile\ttable\ttabletitle\trow\tyvar\t1949\t1948\nAbraham___Straus_22854_1949.pdf\tIncome Statement\tIncome Account\t1\tNet Sales\t$10,000\t$9,000\n[...Full I/S rows...]\n[...Full B/S rows...]"
+}
+
+	[Constraint]
+		- Wrap the final JSON output strictly within a markdown code block (starting with ```json and ending with ```).
+		- This ensures the UI provides a 'Copy' button.
+		- Do not include any preamble, postamble, or conversational text outside the code block.
+		- Output ONLY the pure JSON object. No conversation, no markdown blocks.
