@@ -22,8 +22,8 @@ This workflow automates the digitization of historical financial data from PDF s
 
 ## Workflow Steps
 
-### Step 1. Mapping (Preparation & Selection)
-**Goal:** Capture images and utilize Gemini to determine the optimal "Year Set" based on scan quality.
+### Step 0. Image Files Preparation
+**Goal:** Capture images from PDF scans.
 
 1.  **Image Capture**
     * Capture **IS (Income Statement)**, **BS (Balance Sheet)**, and **WC (Working Capital)** tables for every Company-Year.
@@ -35,7 +35,11 @@ This workflow automates the digitization of historical financial data from PDF s
     * **Result:**
         * `Kayser__Julius____Company_22372_1946 (1).png`
         * `Kayser__Julius____Company_22372_1946 (2).png`
-3.  **Gemini Processing**
+
+### Step 1. Mapping
+**Goal:** Utilize Gemini to determine the optimal "Year Set" based on scan quality.
+
+1.  **Gemini Processing**
     * Input the content of **`Step1.txt`** into the Gemini chat.
     * **Upload Protocol:** Upload images in **batches of 10**.
         1.  Upload 10 images $\rightarrow$ Press Enter $\rightarrow$ Wait for Gemini to request the next batch.
@@ -43,7 +47,7 @@ This workflow automates the digitization of historical financial data from PDF s
         3.  After the final batch, type **"Done"**.
     * Gemini will analyze the batch and output the **Optimal Year Set**.
 
-### Step 2. Extracting (Data Extraction)
+### Step 2. Data Extraction
 **Goal:** Extract financial data from the selected images into JSON format.
 
 1.  **Initiate Extraction**
@@ -58,7 +62,7 @@ This workflow automates the digitization of historical financial data from PDF s
     * **Normal Segmentation:** If segmentation is active, run **Step 3 (Excel Creation)** for the current part, then return to the chat and type **"Yes"** to generate the next part.
     * **Forced Cut-off:** If the JSON ends abruptly (missing the closing `}` bracket), ask Gemini to *"continue generating the rest"* and manually merge the text in your editor.
 
-### Step 3. Create Excel (Conversion)
+### Step 3. Create Excel
 **Goal:** Convert the extracted JSON text into an Excel workbook.
 
 1.  **Execution**
