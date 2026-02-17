@@ -75,6 +75,11 @@ def generate_organized_excels_smart(file_path, folder_name='output_excels'):
 
     success_count = 0
     for pdf_filename in unique_files:
+
+        # Check for file format
+        if not (str(pdf_filename).lower().endswith(('.pdf', '.png', '.jpg'))):
+            continue
+
         try:
             # Filter data for the specific file
             file_df = master_df[master_df['pdffile'] == pdf_filename]
